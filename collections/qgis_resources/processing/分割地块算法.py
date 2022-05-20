@@ -28,7 +28,7 @@ from qgis.core import (QgsProcessing,
 from qgis import processing
 
 
-class ExampleProcessingAlgorithm(QgsProcessingAlgorithm):
+class devideBlockProcessingAlgorithm(QgsProcessingAlgorithm):
     """
     This is an example algorithm that takes a vector layer and
     creates a new identical one.
@@ -56,7 +56,7 @@ class ExampleProcessingAlgorithm(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return ExampleProcessingAlgorithm()
+        return devideBlockProcessingAlgorithm()
 
     def name(self):
         """
@@ -66,21 +66,21 @@ class ExampleProcessingAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'myscript'
+        return '分割地块'
 
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return self.tr('My Script')
+        return self.tr('分割地块')
 
     def group(self):
         """
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Example scripts')
+        return self.tr('QGis-resources')
 
     def groupId(self):
         """
@@ -90,7 +90,7 @@ class ExampleProcessingAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'examplescripts'
+        return 'QGis-resources'
 
     def shortHelpString(self):
         """
@@ -98,7 +98,7 @@ class ExampleProcessingAlgorithm(QgsProcessingAlgorithm):
         should provide a basic description about what the algorithm does and the
         parameters and outputs associated with it..
         """
-        return self.tr("Example algorithm short description")
+        return self.tr("输入一个多边形图层与单位划分面积，该算法筛选出图层内所有包含五个点的多边形，并以划分面积为单位将筛选出的多边形进行等分，不符合五个点的多边形则不处理。")
 
     def initAlgorithm(self, config=None):
         """
