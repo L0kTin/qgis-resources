@@ -37,10 +37,10 @@ class Roadspolygon(QgsProcessingAlgorithm):
         return results
 
     def name(self):
-        return '道路转多边形'
+        return '3道路转多边形'
 
     def displayName(self):
-        return '道路转多边形'
+        return '3道路转多边形'
 
     def group(self):
         return 'QGis-resources'

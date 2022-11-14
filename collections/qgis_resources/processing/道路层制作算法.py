@@ -62,10 +62,10 @@ class roadLayer(QgsProcessingAlgorithm):
         return results
 
     def name(self):
-        return '道路层制作'
+        return '2道路层制作'
 
     def displayName(self):
-        return '道路层制作'
+        return '2道路层制作'
 
     def group(self):
         return 'QGis-resources'

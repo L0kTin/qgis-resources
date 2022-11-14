@@ -66,10 +66,10 @@ class comepareLayer(QgsProcessingAlgorithm):
         return results
 
     def name(self):
-        return '对比层制作'
+        return '1对比层制作'
 
     def displayName(self):
-        return '对比层制作'
+        return '1对比层制作'
 
     def group(self):
         return 'QGis-resources'

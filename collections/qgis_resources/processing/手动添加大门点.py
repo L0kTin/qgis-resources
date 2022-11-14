@@ -1,6 +1,3 @@
-   
-# -*- coding: utf-8 -*-
-
 """
 ***************************************************************************
 *                                                                         *
@@ -11,8 +8,8 @@
 *                                                                         *
 ***************************************************************************
 """
-
-from dataclasses import field
+import numpy as np
+import math
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
                        QgsFeatureSink,
@@ -21,19 +18,24 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterFeatureSource,
                        QgsProcessingParameterFeatureSink,
                        QgsField,
-                       QgsProcessingParameterNumber)
+                       QgsProcessingParameterString,
+                       QgsProcessingParameterNumber,
+                       QgsPoint
+                       )
 from qgis import processing
 from PyQt5.QtCore import QVariant
 
 
-class addIdProcessingAlgorithm(QgsProcessingAlgorithm):
+class ExampleProcessingAlgorithm(QgsProcessingAlgorithm):
     """
     This is an example algorithm that takes a vector layer and
     creates a new identical one.
+
     It is meant to be used as an example of how to create your own
     algorithms and explain methods and variables used to do it. An
     algorithm like this will be available in all elements, and there
     is not need for additional work.
+
     All Processing algorithms should extend the QgsProcessingAlgorithm
     class.
     """
@@ -52,7 +54,7 @@ class addIdProcessingAlgorithm(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return addIdProcessingAlgorithm()
+        return ExampleProcessingAlgorithm()
 
     def name(self):
         """
@@ -62,21 +64,21 @@ class addIdProcessingAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return '图层id添加'
+        return 'myscriptdoor'
 
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return self.tr('图层id添加')
+        return self.tr('My Script door')
 
     def group(self):
         """
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('QGis-resources')
+        return self.tr('Example scripts')
 
     def groupId(self):
         """
@@ -86,12 +88,37 @@ class addIdProcessingAlgorithm(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'QGis-resources'
+        return 'examplescripts'
 
     def shortHelpString(self):
         """
+        Returns a localised short helper string for the algorithm. This string
+        should provide a basic description about what the algorithm does and the
+        parameters and outputs associated with it..
         """
-        return self.tr("输入一个三位城市id和两位图层id，为当前图层所有要素添加next_id.生成规则：next_id共12为，城市id占三位数，图层id占两位，余下为要素id")
+        return self.tr("Example algorithm short description")
+
+    def caculateAngle(self,pointStart,pointEnd1,pointEnd2):
+        dx1 = pointEnd1.x() - pointStart.x()
+        dy1 = pointEnd1.y() - pointStart.y()
+
+        dx2 = pointEnd2.x() - pointStart.x()
+        dy2 = pointEnd2.y() - pointStart.y()
+
+
+        angle1 = int(math.atan2(dy1,dx1) * 180 / math.pi)
+        angle2 = int(math.atan2(dy2,dx2) * 180 / math.pi)
+
+
+        if(angle1 * angle2 >= 0):
+            includedAngle = abs(angle1-angle2)
+        else:
+            includedAngle = abs(angle1) + abs(angle2)
+            if includedAngle > 180:
+                includedAngle = 360 - includedAngle
+        
+        return includedAngle
+
 
     def initAlgorithm(self, config=None):
         """
@@ -105,7 +132,7 @@ class addIdProcessingAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterFeatureSource(
                 self.INPUT,
                 self.tr('Input layer'),
-                [QgsProcessing.TypeVectorAnyGeometry]
+                [QgsProcessing.TypeVectorPolygon]
             )
         )
 
@@ -118,9 +145,9 @@ class addIdProcessingAlgorithm(QgsProcessingAlgorithm):
                 self.tr('Output layer')
             )
         )
-
-        self.addParameter(QgsProcessingParameterNumber('cityId', '城市id', type=QgsProcessingParameterNumber.Integer, minValue=101, maxValue=999, defaultValue=101))
-        self.addParameter(QgsProcessingParameterNumber('layerId', '图层id', type=QgsProcessingParameterNumber.Integer, minValue=1, maxValue=99))
+        self.addParameter(QgsProcessingParameterString('next_id', '输入next_id(若为数组用、分割)',defaultValue="1190002287"))
+        self.addParameter(QgsProcessingParameterString('xPos', '输入点x坐标(若为数组用、分割)', defaultValue="-73.99097708"))
+        self.addParameter(QgsProcessingParameterString('yPos', '输入点y坐标(若为数组用、分割)', defaultValue="40.73900185"))
 
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -131,7 +158,7 @@ class addIdProcessingAlgorithm(QgsProcessingAlgorithm):
         # Retrieve the feature source and sink. The 'dest_id' variable is used
         # to uniquely identify the feature sink, and must be included in the
         # dictionary returned by the processAlgorithm function.
-        layer = self.parameterAsVectorLayer(
+        source = self.parameterAsVectorLayer(
             parameters,
             self.INPUT,
             context
@@ -141,38 +168,21 @@ class addIdProcessingAlgorithm(QgsProcessingAlgorithm):
         # encountered a fatal error. The exception text can be any string, but in this
         # case we use the pre-built invalidSourceError method to return a standard
         # helper text for when a source cannot be evaluated
-        if layer is None:
+        if source is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
 
+        # layer.dataProvider().addAttributes([QgsField('dpIndex', QVariant.Int)])
+        # layer.updateFields()
 
-        layer.selectAll()
-        source = processing.run("native:saveselectedfeatures", {'INPUT': layer, 'OUTPUT': 'memory:'})['OUTPUT']
-        layer.removeSelection()
-
-        # fields = source.fields()
-        # source = layer.clone()
-        newField = QgsField('next_id',QVariant.LongLong)
-        
-        source.dataProvider().addAttributes([newField])
-        source.updateFields()
+        # layer.selectAll()
+        # source = processing.run("native:saveselectedfeatures", {'INPUT': layer, 'OUTPUT': 'memory:'})['OUTPUT']
+        # layer.removeSelection()
 
 
-        # expression = QgsExpression('@row_number')
+        # AttrIndex = layer.fields().indexFromName('dpIndex')
+        # layer.dataProvider().deleteAttributes([AttrIndex])
+        # layer.updateFields()
 
-        # expressionContext = QgsExpressionContext()
-        # expressionContext.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source))
-
-        # context = QgsExpressionContext()
-        # context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source))
-        # fields.append(QgsField("next_id",QVariant.LongLong))
-
-        # print(source)
-        # res = source.fields().append(QgsField("next_id",QVariant.LongLong))
-
-        # print(res)
-
-        # for i in source.fields():
-        #     print(i)
 
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -196,42 +206,59 @@ class addIdProcessingAlgorithm(QgsProcessingAlgorithm):
         # Compute the number of steps to display within the progress bar and
         # get features from source
         total = 100.0 / source.featureCount() if source.featureCount() else 0
-
-        # currentLayer = source.dataProvider()
-        
-        # currentLayer.startEditing()
-
         features = source.getFeatures()
 
-        next_Id = str(parameters['cityId'])
-        layerId = parameters['layerId']
-        if layerId  < 10:
-            next_Id = next_Id + "0"
-        next_Id = next_Id + str(layerId)
+        nextId = parameters['next_id'].split("、")
+        xPos = parameters['xPos'].split("、")
+        yPos = parameters['yPos'].split("、")
 
-        next_Id = next_Id + "0000000"
 
-        count=1
+        
+            
         for current, feature in enumerate(features):
+            
             # Stop the algorithm if cancel button has been clicked
             if feedback.isCanceled():
                 break
-            
-            feature['next_id'] = int(next_Id) + count
-            count+=1
-            # feature[idx] = expression.evaluate( feature )
-            # source.updateFeature( feature )
-            # expressionContext.setFeature(feature)
-            # feature['next_id'] = expression.evaluate(expressionContext)
-            # source.updateFeature(feature)
+            for i in range(0,len(nextId)):
+                if str(feature['next_id']) == nextId[i] :
+                    # print(nextId[i])
+                    # print(float(xPos[i]))
+                    # print(float(yPos[i]))
+                    geom = feature.geometry()
+                    vertices = geom.vertices()
+                    verticesNum = 0
+                    qgisPointArray = []
+                    for point in vertices:
+                        verticesNum += 1
+                        qgisPointArray.append(point)
+                    pointLen = len(qgisPointArray)-1
+                    for index in range(pointLen) :
+                        includedAngle = self.caculateAngle(QgsPoint(float(xPos[i]),float(yPos[i])),qgisPointArray[index],qgisPointArray[index+1])
+                        if(abs(includedAngle-180) < 5 ):
+                            geom.insertVertex(float(xPos[i]),float(yPos[i]),index+1)
+                            feature['dpIndex'] = index+1
+                            break
+                    # print(qgisPointArray)
+                    # geom.insertVertex(parameters['xPos'],parameters['yPos'],verticesNum-1)
+
+                    feature.setGeometry(geom)
+                    
+
+                    # geom = feature.geometry()
+                    # vertices = geom.vertices()
+                    # verticesNum = 0
+                    # qgisPointArray = []
+                    # for point in vertices:
+                    #     verticesNum += 1
+                    #     qgisPointArray.append(point)
+
 
             # Add a feature in the sink
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
 
             # Update the progress bar
             feedback.setProgress(int(current * total))
-
-        source.commitChanges()
 
         # To run another Processing algorithm as part of this algorithm, you can use
         # processing.run(...). Make sure you pass the current context and feedback
